@@ -7,8 +7,8 @@ import org.itech.framework.fx.core.processor.components_processor.ComponentProce
 import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
 
-public class App{
-    private static final Logger logger = LogManager.getLogger(App.class);
+public class ITechApplication {
+    private static final Logger logger = LogManager.getLogger(ITechApplication.class);
     public static void run(Class<?> clazz){
         try {
             ComponentProcessor.initialize(clazz);
