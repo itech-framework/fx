@@ -13,8 +13,7 @@ public class ITechApplication {
         try {
             ComponentProcessor.initialize(clazz);
             logger.debug("Components initialized!");
-        } catch (IOException | ClassNotFoundException | InvocationTargetException | InstantiationException |
-                 IllegalAccessException | NoSuchMethodException e) {
+        } catch (Exception e) {
             logger.error("Application fails to start! {}", e.getMessage());
             throw new RuntimeException(e);
         }
