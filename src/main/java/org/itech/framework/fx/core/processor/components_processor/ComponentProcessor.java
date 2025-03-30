@@ -105,6 +105,14 @@ public class ComponentProcessor {
                 Object instance = createInstance(constructor);
 
                 ComponentStore.registerComponent(key, instance, level);
+
+                for (Class<?> iface : clazz.getInterfaces()) {
+                    String interfaceKey = iface.getName();
+                    if (ComponentStore.components.containsKey(interfaceKey)) {
+                        throw new IllegalArgumentException("Duplicate component key for interface: " + interfaceKey);
+                    }
+                    ComponentStore.registerComponent(interfaceKey, instance, level);
+                }
             } catch (Exception e) {
                 logger.error("Component processing failed", e);
                 throw new RuntimeException(e);
