@@ -7,7 +7,7 @@ import java.lang.annotation.Target;
 
 @Retention(RetentionPolicy.RUNTIME)
 @Target(ElementType.FIELD)
-@SuppressWarnings({"unused", "FieldMayBeFinal"})
+@SuppressWarnings({"unused", "RedundantSuppression"})
 public @interface Property {
     String key();
     String defaultValue() default "";

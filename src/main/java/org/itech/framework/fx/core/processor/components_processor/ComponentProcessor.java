@@ -3,6 +3,7 @@ package org.itech.framework.fx.core.processor.components_processor;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.itech.framework.fx.core.annotations.ComponentScan;
+import org.itech.framework.fx.core.annotations.api_client.EnableApiClient;
 import org.itech.framework.fx.core.annotations.components.Component;
 import org.itech.framework.fx.core.annotations.components.levels.BusinessLogic;
 import org.itech.framework.fx.core.annotations.components.levels.DataAccess;
@@ -13,6 +14,7 @@ import org.itech.framework.fx.core.annotations.parameters.DefaultParameter;
 import org.itech.framework.fx.core.annotations.persistences.EnableJPA;
 import org.itech.framework.fx.core.annotations.properties.Property;
 import org.itech.framework.fx.core.annotations.reactives.Rx;
+import org.itech.framework.fx.core.module.ComponentInitializer;
 import org.itech.framework.fx.core.module.ComponentRegistry;
 import org.itech.framework.fx.core.module.ModuleInitializer;
 import org.itech.framework.fx.core.store.ComponentStore;
@@ -33,6 +35,7 @@ public class ComponentProcessor {
             "javax.persistence.Entity",
             "jakarta.persistence.Entity"
     );
+    private static boolean apiClientsEnabled = false;
 
     private static final Logger logger = LogManager.getLogger(ComponentProcessor.class);
 
@@ -50,6 +53,11 @@ public class ComponentProcessor {
             ComponentRegistry registry = new ComponentRegistry();
             for (ModuleInitializer initializer : loader) {
                 initializer.initialize(registry);
+            }
+
+            // check for api client component is enabled or not
+            if (clazz.isAnnotationPresent(EnableApiClient.class)) {
+                apiClientsEnabled = true;
             }
 
             String basePackage = componentScan.basePackage();
@@ -91,6 +99,15 @@ public class ComponentProcessor {
                 throw new FrameworkException(error.toString());
             }
         }
+        if (apiClientsEnabled){
+            // process for api client
+            // load component initializer
+            ServiceLoader<ComponentInitializer> componentInitializerServiceLoader = ServiceLoader.load(ComponentInitializer.class);
+
+            for(ComponentInitializer initializer: componentInitializerServiceLoader){
+                initializer.initializeComponent(clazz);
+            }
+        }
         if (isComponentClass(clazz)) {
             try {
                 Component componentAnnotation = getComponentAnnotation(clazz);
@@ -118,6 +135,7 @@ public class ComponentProcessor {
                 throw new RuntimeException(e);
             }
         }
+
     }
 
     private static boolean isJpaModuleAvailable() {
