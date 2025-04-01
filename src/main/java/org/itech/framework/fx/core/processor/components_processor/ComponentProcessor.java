@@ -5,13 +5,15 @@ import org.apache.logging.log4j.Logger;
 import org.itech.framework.fx.core.annotations.ComponentScan;
 import org.itech.framework.fx.core.annotations.api_client.EnableApiClient;
 import org.itech.framework.fx.core.annotations.components.Component;
+import org.itech.framework.fx.core.annotations.components.IgnoreInterfaces;
 import org.itech.framework.fx.core.annotations.components.levels.BusinessLogic;
 import org.itech.framework.fx.core.annotations.components.levels.DataAccess;
 import org.itech.framework.fx.core.annotations.components.levels.Presentation;
+import org.itech.framework.fx.core.annotations.components.policy.DisableLoaded;
 import org.itech.framework.fx.core.annotations.constructor.DefaultConstructor;
+import org.itech.framework.fx.core.annotations.jfx.EnableJavaFx;
 import org.itech.framework.fx.core.annotations.methods.InitMethod;
 import org.itech.framework.fx.core.annotations.parameters.DefaultParameter;
-import org.itech.framework.fx.core.annotations.persistences.EnableJPA;
 import org.itech.framework.fx.core.annotations.properties.Property;
 import org.itech.framework.fx.core.annotations.reactives.Rx;
 import org.itech.framework.fx.core.module.ComponentInitializer;
@@ -21,6 +23,7 @@ import org.itech.framework.fx.core.store.ComponentStore;
 import org.itech.framework.fx.core.utils.PackageClassesLoader;
 import org.itech.framework.fx.core.utils.PropertiesLoader;
 import org.itech.framework.fx.exceptions.FrameworkException;
+import org.itech.framework.fx.utils.AnnotationUtils;
 
 import java.lang.annotation.Annotation;
 import java.lang.reflect.*;
@@ -36,6 +39,7 @@ public class ComponentProcessor {
             "jakarta.persistence.Entity"
     );
     private static boolean apiClientsEnabled = false;
+    private static boolean javaFxEnabled = false;
 
     private static final Logger logger = LogManager.getLogger(ComponentProcessor.class);
 
@@ -60,6 +64,12 @@ public class ComponentProcessor {
                 apiClientsEnabled = true;
             }
 
+            // check for javafx
+            if(clazz.isAnnotationPresent(EnableJavaFx.class)){
+                javaFxEnabled = true;
+                validateForJavaFx();
+            }
+
             String basePackage = componentScan.basePackage();
             List<Class<?>> classes = PackageClassesLoader.findAllClasses(basePackage, clazz);
 
@@ -68,7 +78,6 @@ public class ComponentProcessor {
                 processComponents(componentClass);
             }
 
-            // Phase 2: Dependency injection and initialization
             processTierLevel(DATA_ACCESS_LEVEL);
             processTierLevel(BUSINESS_LOGIC_LEVEL);
             processTierLevel(PRESENTATION_LEVEL);
@@ -76,10 +85,26 @@ public class ComponentProcessor {
         }
     }
 
+    private static void validateForJavaFx(){
+        if(javaFxEnabled){
+            try {
+                Class.forName("org.itech.framework.fx.java_fx.ITechJavaFxApplication");
+            } catch (ClassNotFoundException e) {
+                throw new FrameworkException("""
+                            JavaFx is enable but no java fx module found! please add this in your pom or download jar for javafx component.
+                            <groupId>org.itech.framework.fx</groupId>
+                            <artifactId>java-fx</artifactId>
+                        """);
+            }
+        }
+    }
+
     private static void processTierLevel(int level) {
         ComponentStore.getComponentsByLevel(level).forEach(instance -> {
-            injectFields(instance.getClass(), instance);
-            injectMethods(instance.getClass(), instance);
+            if(!AnnotationUtils.hasAnnotation(instance.getClass(), DisableLoaded.class)){
+                injectFields(instance.getClass(), instance);
+                injectMethods(instance.getClass(), instance);
+            }
         });
     }
 
@@ -123,13 +148,16 @@ public class ComponentProcessor {
 
                 ComponentStore.registerComponent(key, instance, level);
 
-                for (Class<?> iface : clazz.getInterfaces()) {
-                    String interfaceKey = iface.getName();
-                    if (ComponentStore.components.containsKey(interfaceKey)) {
-                        throw new IllegalArgumentException("Duplicate component key for interface: " + interfaceKey);
+                if(!AnnotationUtils.hasAnnotation(clazz, IgnoreInterfaces.class)){
+                    for (Class<?> iface : clazz.getInterfaces()) {
+                        String interfaceKey = iface.getName();
+                        if (ComponentStore.components.containsKey(interfaceKey)) {
+                            throw new IllegalArgumentException("Duplicate component key for interface: " + interfaceKey);
+                        }
+                        ComponentStore.registerComponent(interfaceKey, instance, level);
                     }
-                    ComponentStore.registerComponent(interfaceKey, instance, level);
                 }
+
             } catch (Exception e) {
                 logger.error("Component processing failed", e);
                 throw new RuntimeException(e);
@@ -261,7 +289,7 @@ public class ComponentProcessor {
         return getDefaultValueForType(parameter.getType());
     }
 
-    private static void injectFields(Class<?> clazz, Object instance) {
+    public static void injectFields(Class<?> clazz, Object instance) {
         Class<?> currentClass = clazz;
         while (currentClass != null && currentClass != Object.class) {
             processClassFields(currentClass, instance);
@@ -321,7 +349,7 @@ public class ComponentProcessor {
         field.set(instance, component);
     }
 
-    private static void injectMethods(Class<?> clazz, Object instance) {
+    public static void injectMethods(Class<?> clazz, Object instance) {
         List<Method> initMethods = Arrays.stream(clazz.getDeclaredMethods())
                 .filter(m -> m.isAnnotationPresent(InitMethod.class))
                 .sorted(Comparator.comparingInt(m -> m.getAnnotation(InitMethod.class).order()))
