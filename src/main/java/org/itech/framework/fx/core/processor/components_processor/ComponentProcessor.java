@@ -19,6 +19,7 @@ import org.itech.framework.fx.core.annotations.reactives.Rx;
 import org.itech.framework.fx.core.module.ComponentInitializer;
 import org.itech.framework.fx.core.module.ComponentRegistry;
 import org.itech.framework.fx.core.module.ModuleInitializer;
+import org.itech.framework.fx.core.resourcecs.CleanupRegistry;
 import org.itech.framework.fx.core.store.ComponentStore;
 import org.itech.framework.fx.core.utils.PackageClassesLoader;
 import org.itech.framework.fx.core.utils.PropertiesLoader;
@@ -82,6 +83,9 @@ public class ComponentProcessor {
             processTierLevel(BUSINESS_LOGIC_LEVEL);
             processTierLevel(PRESENTATION_LEVEL);
             processTierLevel(DEFAULT_LEVEL);
+
+            // clean up resources registry
+            Runtime.getRuntime().addShutdownHook(new Thread(CleanupRegistry::cleanup));
         }
     }
 
