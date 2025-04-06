@@ -16,6 +16,11 @@ public class CleanupRegistry {
         tasks.sort(Comparator.comparingInt(TaskWithPriority::priority));
     }
 
+    public static void addTask(Runnable task, int priority) {
+        tasks.add(new TaskWithPriority(task, priority));
+    }
+
+
     public static void cleanup() {
         logger.info("Starting resource cleanup...");
         for (TaskWithPriority twp : tasks) {

@@ -16,11 +16,15 @@ import org.itech.framework.fx.core.annotations.methods.InitMethod;
 import org.itech.framework.fx.core.annotations.parameters.DefaultParameter;
 import org.itech.framework.fx.core.annotations.properties.Property;
 import org.itech.framework.fx.core.annotations.reactives.Rx;
+import org.itech.framework.fx.core.annotations.storage.DataStorage;
 import org.itech.framework.fx.core.module.ComponentInitializer;
 import org.itech.framework.fx.core.module.ComponentRegistry;
 import org.itech.framework.fx.core.module.ModuleInitializer;
 import org.itech.framework.fx.core.resourcecs.CleanupRegistry;
+import org.itech.framework.fx.core.storage.DataStorageService;
+import org.itech.framework.fx.core.storage.DefaultDataStorageService;
 import org.itech.framework.fx.core.store.ComponentStore;
+import org.itech.framework.fx.core.utils.ObjectUtils;
 import org.itech.framework.fx.core.utils.PackageClassesLoader;
 import org.itech.framework.fx.core.utils.PropertiesLoader;
 import org.itech.framework.fx.exceptions.FrameworkException;
@@ -60,6 +64,13 @@ public class ComponentProcessor {
                 initializer.initialize(registry);
             }
 
+            // registering data storage service
+            if (ComponentStore.getComponent(DataStorageService.class.getName()) == null) {
+                logger.debug("Registering default StorageService");
+                DataStorageService defaultStorage = new DefaultDataStorageService();
+                ComponentStore.registerComponent(DataStorageService.class.getName(), defaultStorage, DEFAULT_LEVEL);
+            }
+
             // check for api client component is enabled or not
             if (clazz.isAnnotationPresent(EnableApiClient.class)) {
                 apiClientsEnabled = true;
@@ -73,7 +84,6 @@ public class ComponentProcessor {
 
             String basePackage = componentScan.basePackage();
             List<Class<?>> classes = PackageClassesLoader.findAllClasses(basePackage, clazz);
-
             for (Class<?> componentClass : classes) {
                 logger.debug("Scanning class: {}", componentClass.getName());
                 processComponents(componentClass);
@@ -287,7 +297,7 @@ public class ComponentProcessor {
 
         DefaultParameter defaultParam = parameter.getAnnotation(DefaultParameter.class);
         if (defaultParam != null) {
-            return convertValue(defaultParam.value(), parameter.getType());
+            return ObjectUtils.convertValue(defaultParam.value(), parameter.getType());
         }
 
         return getDefaultValueForType(parameter.getType());
@@ -310,6 +320,9 @@ public class ComponentProcessor {
                 if (field.isAnnotationPresent(Rx.class)) {
                     processRxField(instance, field);
                 }
+                if (field.isAnnotationPresent(DataStorage.class)) {
+                    processDataStorageField(instance, field);
+                }
             } catch (IllegalAccessException e) {
                 logger.error("Field injection failed for {} in {}", field.getName(), clazz.getName(), e);
                 throw new RuntimeException("Field injection failed", e);
@@ -331,7 +344,7 @@ public class ComponentProcessor {
             value = defaultValue;
         }
 
-        Object convertedValue = convertValue(value, field.getType());
+        Object convertedValue = ObjectUtils.convertValue(value, field.getType());
         field.setAccessible(true);
         field.set(instance, convertedValue);
     }
@@ -351,6 +364,55 @@ public class ComponentProcessor {
 
         field.setAccessible(true);
         field.set(instance, component);
+    }
+
+    private static void processDataStorageField(Object instance, Field field) throws IllegalAccessException {
+        DataStorage dataStorage = field.getAnnotation(DataStorage.class);
+        String key = dataStorage.key().isEmpty() ? field.getName() : dataStorage.key();
+
+        DataStorageService storageService = (DataStorageService) ComponentStore.getComponent(DataStorageService.class.getName());
+        if (storageService == null) {
+            throw new IllegalStateException("No StorageService available for @DataStorage");
+        }
+
+        String storedValue = storageService.load(key);
+        Object valueToSet;
+
+        if (storedValue != null) {
+            valueToSet = ObjectUtils.convertValue(storedValue, field.getType());
+        } else {
+            String defaultValue = dataStorage.defaultValue();
+            if (!defaultValue.isEmpty()) {
+                valueToSet = ObjectUtils.convertValue(defaultValue, field.getType());
+            } else {
+                field.setAccessible(true);
+                valueToSet = field.get(instance);
+            }
+        }
+
+        System.out.println("Value to Set for data storage: " + valueToSet);
+
+        field.setAccessible(true);
+        field.set(instance, valueToSet);
+
+        /*CleanupRegistry.addTask(() -> {
+            try {
+                field.setAccessible(true);
+                Object currentValue = field.get(instance);
+                String valueToStore = convertToString(currentValue, field.getType());
+                storageService.save(key, valueToStore);
+            } catch (IllegalAccessException e) {
+                logger.error("Failed to save DataStorage field {}", key, e);
+            }
+        }, DEFAULT_LEVEL);*/
+    }
+
+    private static String convertToString(Object value, Class<?> type) {
+        if (value == null) return null;
+        if (type.isEnum()) {
+            return ((Enum<?>) value).name();
+        }
+        return value.toString();
     }
 
     public static void injectMethods(Class<?> clazz, Object instance) {
@@ -394,44 +456,6 @@ public class ComponentProcessor {
                     throw new IllegalStateException("Cannot resolve parameter: " + param.getName());
                 })
                 .toArray();
-    }
-
-    @SuppressWarnings({"unchecked", "rawtypes"})
-    private static Object convertValue(String value, Class<?> type) {
-        if (type == String.class) return value;
-
-        try {
-            if (type == int.class || type == Integer.class) {
-                return Integer.parseInt(value);
-            } else if (type == double.class || type == Double.class) {
-                return Double.parseDouble(value);
-            } else if (type == long.class || type == Long.class) {
-                return Long.parseLong(value);
-            } else if (type == boolean.class || type == Boolean.class) {
-                return Boolean.parseBoolean(value);
-            } else if (type == float.class || type == Float.class) {
-                return Float.parseFloat(value);
-            } else if (type == short.class || type == Short.class) {
-                return Short.parseShort(value);
-            } else if (type == byte.class || type == Byte.class) {
-                return Byte.parseByte(value);
-            } else if (type == char.class || type == Character.class) {
-                if (value.length() != 1) {
-                    throw new IllegalArgumentException("Char value must be exactly 1 character");
-                }
-                return value.charAt(0);
-            } else if (type.isEnum()) {
-                return Enum.valueOf((Class<Enum>) type, value);
-            }
-        } catch (Exception e) {
-            throw new IllegalArgumentException(
-                    "Cannot convert value '" + value + "' to type " + type.getSimpleName(), e
-            );
-        }
-
-        throw new UnsupportedOperationException(
-                "Unsupported conversion to type: " + type.getName()
-        );
     }
 
     private static Object getDefaultValueForType(Class<?> type) {
