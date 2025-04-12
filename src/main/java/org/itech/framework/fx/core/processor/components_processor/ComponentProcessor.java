@@ -390,8 +390,6 @@ public class ComponentProcessor {
             }
         }
 
-        System.out.println("Value to Set for data storage: " + valueToSet);
-
         field.setAccessible(true);
         field.set(instance, valueToSet);
 
