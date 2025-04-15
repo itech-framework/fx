@@ -240,3 +240,13 @@ The framework organizes components in a layered architecture using priority leve
    ```txt
    Data Access (0) → Business Logic (1) → Presentation (2) → Default (3)
    ```
+
+
+## 🤝 Support
+For assistance:  
+📧 Email: `itech.saizawmyint@gmail.com`  
+📑 [Open an Issue](https://github.com/itech-framework/fx/issues))
+
+---
+
+*Made with ❤️ by the FlexiTech Team*
