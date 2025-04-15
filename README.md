@@ -245,7 +245,7 @@ The framework organizes components in a layered architecture using priority leve
 ## 🤝 Support
 For assistance:  
 📧 Email: `itech.saizawmyint@gmail.com`  
-📑 [Open an Issue](https://github.com/itech-framework/fx/issues))
+📑 [Open an Issue](https://github.com/itech-framework/fx/issues)
 
 ---
 
