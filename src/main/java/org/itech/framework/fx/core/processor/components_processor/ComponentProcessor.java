@@ -13,6 +13,7 @@ import org.itech.framework.fx.core.annotations.components.policy.DisableLoaded;
 import org.itech.framework.fx.core.annotations.constructor.DefaultConstructor;
 import org.itech.framework.fx.core.annotations.jfx.EnableJavaFx;
 import org.itech.framework.fx.core.annotations.methods.InitMethod;
+import org.itech.framework.fx.core.annotations.methods.PreDestroy;
 import org.itech.framework.fx.core.annotations.parameters.DefaultParameter;
 import org.itech.framework.fx.core.annotations.properties.Property;
 import org.itech.framework.fx.core.annotations.reactives.Rx;
@@ -117,7 +118,7 @@ public class ComponentProcessor {
         ComponentStore.getComponentsByLevel(level).forEach(instance -> {
             if(!AnnotationUtils.hasAnnotation(instance.getClass(), DisableLoaded.class)){
                 injectFields(instance.getClass(), instance);
-                injectMethods(instance.getClass(), instance);
+                injectMethods(instance.getClass(), instance, level);
             }
         });
     }
@@ -413,7 +414,12 @@ public class ComponentProcessor {
         return value.toString();
     }
 
-    public static void injectMethods(Class<?> clazz, Object instance) {
+    public static void injectMethods(Class<?> clazz, Object instance, int level) {
+        processInitMethod(clazz, instance);
+        processPreDestroyMethod(clazz, instance, level);
+    }
+
+    private static void processInitMethod(Class<?> clazz, Object instance){
         List<Method> initMethods = Arrays.stream(clazz.getDeclaredMethods())
                 .filter(m -> m.isAnnotationPresent(InitMethod.class))
                 .sorted(Comparator.comparingInt(m -> m.getAnnotation(InitMethod.class).order()))
@@ -430,6 +436,21 @@ public class ComponentProcessor {
                 throw new RuntimeException("Init method execution failed", e);
             }
         }
+    }
+
+    private static void processPreDestroyMethod(Class<?> clazz, Object instance, int level) {
+        Arrays.stream(clazz.getDeclaredMethods())
+                .filter(method -> method.isAnnotationPresent(PreDestroy.class))
+                .forEach(method -> {
+                    CleanupRegistry.register(() -> {
+                        try {
+                            method.setAccessible(true);
+                            method.invoke(instance);
+                        } catch (Exception e) {
+                            throw new FrameworkException(e.getMessage());
+                        }
+                    }, level);
+                });
     }
 
     private static void validateInitMethod(Method method) {
