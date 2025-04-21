@@ -6,12 +6,40 @@
 
     <groupId>io.github.itech-framework</groupId>
     <artifactId>core</artifactId>
-    <version>1.0.0</version>
+    <version>1.0.1</version>
 
     <name>Flexitech FX Framework</name>
-    <description></description>
-    <url></url>
+    <description>
+        Core module of the Flexitech framework providing dependency injection,
+        annotation processing, and component lifecycle management. Features include:
+        - Annotation-driven configuration
+        - Component scanning and auto-wiring
+        - JavaFX/JPA integration support
+        - Lightweight AOP capabilities
+    </description>
+    <url>https://github.com/itech-framework/core</url>
 
+    <!-- Licensing Information -->
+    <licenses>
+        <license>
+            <name>MIT License</name>
+            <url>http://www.opensource.org/licenses/mit-license.php</url>
+        </license>
+    </licenses>
+
+    <developers>
+        <developer>
+            <name>Sai Zaw Myint</name>
+            <email>itech.saizawmyint@gmail.com</email>
+        </developer>
+    </developers>
+
+    <!-- SCM Configuration -->
+    <scm>
+        <connection>scm:git:https://github.com/itech-framework/core.git</connection>
+        <developerConnection>scm:git:ssh://git@github.com/itech-framework/core.git</developerConnection>
+        <url>https://github.com/itech-framework/core/tree/main</url>
+    </scm>
 
     <properties>
         <maven.compiler.source>17</maven.compiler.source>

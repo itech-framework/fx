@@ -103,11 +103,11 @@ public class ComponentProcessor {
     private static void validateForJavaFx(){
         if(javaFxEnabled){
             try {
-                Class.forName("io.github.itech_framework.core.java_fx.ITechJavaFxApplication");
+                Class.forName("io.github.itech_framework.java_fx.ITechJavaFxApplication");
             } catch (ClassNotFoundException e) {
                 throw new FrameworkException("""
                             JavaFx is enable but no java fx module found! please add this in your pom or download jar for javafx component.
-                            <groupId>io.github.itech_framework.itechfx</groupId>
+                            <groupId>io.github.itech-framework</groupId>
                             <artifactId>java-fx</artifactId>
                         """);
             }
@@ -129,7 +129,7 @@ public class ComponentProcessor {
             if (!isJpaModuleAvailable()) {
                 StringBuilder error = new StringBuilder("JPA required but not available.\n");
                 try {
-                    Class.forName("io.github.itech_framework.core.jpa.config.FlexiJpaConfig");
+                    Class.forName("io.github.itech_framework.jpa.config.FlexiJpaConfig");
                     error.append("- JPA module found but initialization failed\n");
                     error.append("- Check your jpa.* properties configuration");
                 } catch (ClassNotFoundException e) {
@@ -183,7 +183,7 @@ public class ComponentProcessor {
 
     private static boolean isJpaModuleAvailable() {
         try {
-            Class<?> configClass = Class.forName("io.github.itech_framework.core.jpa.config.FlexiJpaConfig");
+            Class<?> configClass = Class.forName("io.github.itech_framework.jpa.config.FlexiJpaConfig");
             Object config = ComponentStore.getComponent(configClass.getName());
 
             logger.debug("Is JPA config is NULL : {}", config==null);
